@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ecoo Task Manager (Web Prototype)</title>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* smooth chips */
+    .chip { border-radius: 9999px; padding: .125rem .6rem; font-weight: 600; font-size: .75rem; }
+    .chip-open { background:#e0f2fe; color:#075985; }
+    .chip-closed { background:#dcfce7; color:#166534; }
+    .chip-high { background:#fee2e2; color:#991b1b; }
+    .chip-med { background:#fef9c3; color:#854d0e; }
+    .chip-low { background:#e5e7eb; color:#374151; }
+    .ring-focus { outline:none; box-shadow: 0 0 0 3px rgba(59,130,246,.35); }
+    /* sticky table header */
+    thead th { position: sticky; top: 0; z-index: 2; background: rgb(15 23 42); }
+    /* nicer scrollbar (optional) */
+    ::-webkit-scrollbar { height: 10px; width: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(100,116,139,.45); border-radius: 9999px; }
+    ::-webkit-scrollbar-track { background: rgba(2,6,23,.06); }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-50 border-b bg-white/85 backdrop-blur">
+    <div class="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+      <img
+  src="./Ecoo vector logo-01.png"
+  alt="Ecoo Global Advisors"
+  class="h-10 w-auto max-w-[120px] object-contain"
+/>
+
+      <div class="min-w-0">
+        <div class="text-lg font-semibold leading-5">Ecoo Task Manager</div>
+        <div class="text-xs text-slate-500">Fast web-style tracker (prototype) — delegation + status + revisions</div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-2">
+        <button id="btnNewTask" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+          + New Task
+        </button>
+        <button id="btnExport" class="px-3 py-2 rounded-xl bg-white border text-sm font-semibold hover:bg-slate-50">
+          Export JSON
+        </button>
+        <button id="btnReset" class="px-3 py-2 rounded-xl bg-white border text-sm font-semibold hover:bg-slate-50">
+          Reset Demo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-7xl px-4 py-6 grid grid-cols-12 gap-4">
+    <!-- Left: Filters / Summary -->
+    <aside class="col-span-12 lg:col-span-3 space-y-4">
+      <!-- Role / View -->
+      <section class="bg-white border rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold">View</h2>
+          <span class="text-xs text-slate-500" id="now"></span>
+        </div>
+
+        <label class="block mt-3 text-xs font-semibold text-slate-600">Role</label>
+        <select id="roleSelect" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus">
+          <option value="lead">Team Lead (All Tasks)</option>
+          <option value="member">Team Member (My Tasks)</option>
+        </select>
+
+        <label class="block mt-3 text-xs font-semibold text-slate-600">User</label>
+        <select id="userSelect" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus"></select>
+
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <button id="btnMyTasks" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+            My Tasks
+          </button>
+          <button id="btnAllTasks" class="px-3 py-2 rounded-xl border bg-white text-sm font-semibold hover:bg-slate-50">
+            All Tasks
+          </button>
+        </div>
+      </section>
+
+      <!-- Quick Filters -->
+      <section class="bg-white border rounded-2xl p-4 shadow-sm space-y-3">
+        <h2 class="font-semibold">Filters</h2>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600">Search</label>
+          <input id="q" type="text" placeholder="Task ID / client / description..." class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600">Status</label>
+            <select id="statusFilter" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus">
+              <option value="">All</option>
+              <option value="Open">Open</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600">Urgency</label>
+            <select id="urgencyFilter" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus">
+              <option value="">All</option>
+              <option value="Very high">Very high</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600">Due (from)</label>
+            <input id="dueFrom" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600">Due (to)</label>
+            <input id="dueTo" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="btnApply" class="flex-1 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500">
+            Apply
+          </button>
+          <button id="btnClear" class="px-3 py-2 rounded-xl border bg-white text-sm font-semibold hover:bg-slate-50">
+            Clear
+          </button>
+        </div>
+      </section>
+
+      <!-- Summary -->
+      <section class="bg-white border rounded-2xl p-4 shadow-sm">
+        <h2 class="font-semibold">Summary</h2>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">Total</div>
+            <div class="text-2xl font-bold" id="sumTotal">0</div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">Open</div>
+            <div class="text-2xl font-bold text-blue-700" id="sumOpen">0</div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">Closed</div>
+            <div class="text-2xl font-bold text-green-700" id="sumClosed">0</div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">Overdue</div>
+            <div class="text-2xl font-bold text-red-700" id="sumOverdue">0</div>
+          </div>
+        </div>
+
+        <div class="mt-3 text-xs text-slate-500">
+          Tip: Team lead sees all tasks; team member sees only assigned tasks.
+        </div>
+      </section>
+    </aside>
+
+    <!-- Center: Task Table -->
+    <section class="col-span-12 lg:col-span-8 bg-white border rounded-2xl shadow-sm overflow-hidden">
+      <div class="p-4 border-b flex items-center justify-between gap-2">
+        <div>
+          <h2 class="font-semibold">Tasks</h2>
+          <div class="text-xs text-slate-500">Click a row to open details • “Close” requires confirmation</div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <select id="sortBy" class="border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus">
+            <option value="dueAsc">Sort: Due date (asc)</option>
+            <option value="dueDesc">Sort: Due date (desc)</option>
+            <option value="createdDesc">Sort: Created (newest)</option>
+            <option value="urgency">Sort: Urgency (high)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="max-h-[70vh] overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-white">
+            <tr>
+              <th class="px-4 py-3 text-xs font-semibold">Task ID</th>
+              <th class="px-4 py-3 text-xs font-semibold">Client</th>
+              <th class="px-4 py-3 text-xs font-semibold">Assigned</th>
+              <th class="px-4 py-3 text-xs font-semibold">Urgency</th>
+              <th class="px-4 py-3 text-xs font-semibold">Due</th>
+              <th class="px-4 py-3 text-xs font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody id="taskBody" class="divide-y"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Right: Details -->
+    <section class="col-span-12 lg:col-span-3 space-y-4">
+      <!-- Task Detail -->
+      <section class="bg-white border rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold">Task Details</h2>
+          <span id="detailBadge" class="chip chip-open hidden">Open</span>
+        </div>
+
+        <div id="noSelection" class="mt-3 text-sm text-slate-500">
+          Select any task from the list to view / update.
+        </div>
+
+        <div id="detail" class="hidden mt-3 space-y-3">
+          <div class="text-xs text-slate-500">Task ID</div>
+          <div class="font-semibold" id="d_taskId">—</div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-xs text-slate-500">Assignor</div>
+              <div class="text-sm font-medium" id="d_assignor">—</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-500">Created</div>
+              <div class="text-sm font-medium" id="d_created">—</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-xs text-slate-500">Client</div>
+            <div class="text-sm font-medium" id="d_client">—</div>
+          </div>
+
+          <div>
+            <div class="text-xs text-slate-500">Description</div>
+            <div class="text-sm" id="d_desc">—</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600">Urgency</label>
+              <select id="d_urgency" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus">
+                <option>Very high</option><option>High</option><option>Medium</option><option>Low</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600">Due date</label>
+              <input id="d_due" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+            </div>
+          </div>
+
+          <!-- Delegation -->
+          <div class="rounded-2xl border bg-slate-50 p-3">
+            <div class="text-xs font-semibold text-slate-700">Delegation</div>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <div class="text-xs text-slate-500">Assigned to</div>
+                <div class="text-sm font-medium" id="d_assignedTo">—</div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600">Further delegate</label>
+                <select id="d_delegateTo" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus"></select>
+              </div>
+            </div>
+            <button id="btnDelegate" class="mt-2 w-full px-3 py-2 rounded-xl bg-white border text-sm font-semibold hover:bg-slate-100">
+              Delegate
+            </button>
+            <p class="mt-2 text-xs text-slate-500">
+              Will ask: “Assign further to X?” and keep same Task ID.
+            </p>
+          </div>
+
+          <!-- Status + Revision -->
+          <div class="rounded-2xl border p-3">
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-semibold text-slate-700">Status</div>
+              <div class="text-xs text-slate-500" id="d_lastUpdate">—</div>
+            </div>
+
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600">Mark Status</label>
+                <select id="d_status" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus">
+                  <option>Open</option>
+                  <option>Closed</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600">Actual date</label>
+                <input id="d_actual" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+              </div>
+            </div>
+
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600">Revision - 1</label>
+                <input id="d_rev1" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600">Revision - 2</label>
+                <input id="d_rev2" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+              </div>
+            </div>
+
+            <button id="btnSave" class="mt-3 w-full px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500">
+              Save Changes
+            </button>
+
+            <p class="mt-2 text-xs text-slate-500">
+              “Closed” requires confirmation. In real system you can lock edits after close.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Activity Log -->
+      <section class="bg-white border rounded-2xl p-4 shadow-sm">
+        <h2 class="font-semibold">Activity</h2>
+        <div class="mt-3 max-h-[28vh] overflow-auto space-y-2" id="log"></div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Modal: New Task -->
+  <div id="modalBackdrop" class="hidden fixed inset-0 bg-black/40 z-50"></div>
+  <div id="modal" class="hidden fixed inset-0 z-50 grid place-items-center p-4">
+    <div class="w-full max-w-xl bg-white rounded-2xl shadow-xl border overflow-hidden">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div>
+          <div class="font-semibold">Create new task</div>
+          <div class="text-xs text-slate-500">Demo: generates Task ID like ECOOyymmdd###</div>
+        </div>
+        <button id="btnCloseModal" class="px-3 py-1.5 rounded-xl border hover:bg-slate-50 text-sm font-semibold">Close</button>
+      </div>
+      <div class="p-4 grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-600">Client name</label>
+          <input id="m_client" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" placeholder="e.g., AA ENTERPRISES (10389)" />
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-600">Task description</label>
+          <textarea id="m_desc" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" rows="3" placeholder="e.g., PF return for Nov-25"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600">Assignor</label>
+          <select id="m_assignor" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600">Assign to</label>
+          <select id="m_assignTo" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600">Urgency</label>
+          <select id="m_urgency" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus">
+            <option>Very high</option><option>High</option><option selected>Medium</option><option>Low</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600">Start date (optional)</label>
+          <input id="m_start" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+        </div>
+
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-600">Planned / Due date</label>
+          <input id="m_due" type="date" class="mt-1 w-full border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 ring-focus" />
+        </div>
+      </div>
+      <div class="p-4 border-t flex items-center justify-end gap-2">
+        <button id="btnCreateTask" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+          Create Task
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * Demo Data + Helpers *
+     ***********************/
+    const TEAM = [
+      "Nitin Bisht","Mani Manglik","Pavitra Pal","Anshu Parsola","Vishal Sharma",
+      "Saurav Rawat","Prashant Gaur","Anuj Chauhan","Mohit Negi","Nisha Chauhan","Hardik Sharma"
+    ];
+
+    const URGENCY_ORDER = {"Very high": 4, "High": 3, "Medium": 2, "Low": 1};
+
+    function pad3(n){ return String(n).padStart(3,"0"); }
+    function yymmdd(d){
+      const yy = String(d.getFullYear()).slice(-2);
+      const mm = String(d.getMonth()+1).padStart(2,"0");
+      const dd = String(d.getDate()).padStart(2,"0");
+      return yy+mm+dd;
+    }
+    function fmtDate(iso){
+      if(!iso) return "—";
+      const d = new Date(iso+"T00:00:00");
+      return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"});
+    }
+    function todayISO(){
+      const d=new Date(); d.setHours(0,0,0,0);
+      return d.toISOString().slice(0,10);
+    }
+    function daysFromToday(iso){
+      if(!iso) return null;
+      const a = new Date(iso+"T00:00:00").getTime();
+      const b = new Date(todayISO()+"T00:00:00").getTime();
+      return Math.round((a-b)/86400000);
+    }
+    function chipForUrgency(u){
+      if(u==="Very high"||u==="High") return "chip chip-high";
+      if(u==="Medium") return "chip chip-med";
+      return "chip chip-low";
+    }
+    function chipForStatus(s){
+      return s==="Closed" ? "chip chip-closed" : "chip chip-open";
+    }
+
+    // Storage
+    const STORAGE_KEY = "ecoo_task_manager_demo_v1";
+
+    function loadState(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+      // default demo tasks
+      const baseDate = new Date();
+      const idPrefix = "ECOO"+yymmdd(baseDate);
+      return {
+        counterByDay: {[yymmdd(baseDate)]: 3},
+        tasks: [
+          {
+            taskId: idPrefix+pad3(1),
+            createdOn: new Date().toISOString(),
+            assignor: "Vishal Sharma",
+            clientName: "AA ENTERPRISES (10389)",
+            description: "PF return for Nov-25",
+            assignedTo: "Hardik Sharma",
+            urgency: "Medium",
+            startDate: todayISO(),
+            dueDate: todayISO(),
+            status: "Open",
+            actualDate: "",
+            rev1: "",
+            rev2: "",
+            lastUpdated: new Date().toISOString(),
+            history: [
+              {at:new Date().toISOString(), by:"System", action:"Created task"}
+            ]
+          },
+          {
+            taskId: idPrefix+pad3(2),
+            createdOn: new Date().toISOString(),
+            assignor: "Laxman Singh",
+            clientName: "ABHAY PRATAP SINGH (10137)",
+            description: "Other miscellaneous work",
+            assignedTo: "Nitin Bisht",
+            urgency: "High",
+            startDate: todayISO(),
+            dueDate: todayISO(),
+            status: "Open",
+            actualDate: "",
+            rev1: "",
+            rev2: "",
+            lastUpdated: new Date().toISOString(),
+            history: [
+              {at:new Date().toISOString(), by:"System", action:"Created task"}
+            ]
+          },
+          {
+            taskId: idPrefix+pad3(3),
+            createdOn: new Date().toISOString(),
+            assignor: "Vishal Sharma",
+            clientName: "ABHISHEK JOSHI (10134)",
+            description: "For testing email",
+            assignedTo: "Mani Manglik",
+            urgency: "Very high",
+            startDate: todayISO(),
+            dueDate: todayISO(),
+            status: "Closed",
+            actualDate: todayISO(),
+            rev1: "",
+            rev2: "",
+            lastUpdated: new Date().toISOString(),
+            history: [
+              {at:new Date().toISOString(), by:"System", action:"Created task"},
+              {at:new Date().toISOString(), by:"Mani Manglik", action:"Marked Closed"}
+            ]
+          }
+        ],
+        view: { role:"lead", user:"Hardik Sharma" }
+      };
+    }
+
+    function saveState(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function logEvent(text){
+      const line = { at: new Date().toISOString(), text };
+      uiLog.unshift(line);
+      renderLog();
+    }
+
+    let state = loadState();
+    let selectedTaskId = null;
+    let uiLog = [];
+
+    /****************
+     * DOM Elements *
+     ****************/
+    const $ = (id)=>document.getElementById(id);
+
+    const taskBody = $("taskBody");
+    const logEl = $("log");
+
+    /**********************
+     * Populate selectors *
+     **********************/
+    function fillSelect(el, items){
+      el.innerHTML = "";
+      for(const v of items){
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = v;
+        el.appendChild(opt);
+      }
+    }
+
+    function initUI(){
+      $("now").textContent = new Date().toLocaleString();
+
+      fillSelect($("userSelect"), TEAM);
+      fillSelect($("d_delegateTo"), ["— Select —", ...TEAM]);
+      fillSelect($("m_assignor"), ["Laxman Singh","Vishal Sharma", ...TEAM]);
+      fillSelect($("m_assignTo"), TEAM);
+
+      $("roleSelect").value = state.view.role;
+      $("userSelect").value = state.view.user;
+    }
+
+    /*****************
+     * Filtering/sort *
+     *****************/
+    function getVisibleTasks(){
+      const role = $("roleSelect").value;
+      const user = $("userSelect").value;
+
+      const q = $("q").value.trim().toLowerCase();
+      const sf = $("statusFilter").value;
+      const uf = $("urgencyFilter").value;
+      const from = $("dueFrom").value;
+      const to = $("dueTo").value;
+
+      let tasks = [...state.tasks];
+
+      // role logic
+      if(role === "member"){
+        tasks = tasks.filter(t => t.assignedTo === user);
+      }
+
+      // quick buttons
+      if(activeQuick === "my"){
+        tasks = tasks.filter(t => t.assignedTo === user);
+      }
+
+      // filters
+      if(q){
+        tasks = tasks.filter(t =>
+          (t.taskId||"").toLowerCase().includes(q) ||
+          (t.clientName||"").toLowerCase().includes(q) ||
+          (t.description||"").toLowerCase().includes(q) ||
+          (t.assignedTo||"").toLowerCase().includes(q)
+        );
+      }
+      if(sf) tasks = tasks.filter(t => t.status === sf);
+      if(uf) tasks = tasks.filter(t => t.urgency === uf);
+      if(from) tasks = tasks.filter(t => (t.dueDate||"") >= from);
+      if(to) tasks = tasks.filter(t => (t.dueDate||"") <= to);
+
+      // sort
+      const sortBy = $("sortBy").value;
+      if(sortBy === "dueAsc"){
+        tasks.sort((a,b)=>(a.dueDate||"").localeCompare(b.dueDate||""));
+      } else if(sortBy === "dueDesc"){
+        tasks.sort((a,b)=>(b.dueDate||"").localeCompare(a.dueDate||""));
+      } else if(sortBy === "createdDesc"){
+        tasks.sort((a,b)=>(b.createdOn||"").localeCompare(a.createdOn||""));
+      } else if(sortBy === "urgency"){
+        tasks.sort((a,b)=>(URGENCY_ORDER[b.urgency]-URGENCY_ORDER[a.urgency]));
+      }
+
+      return tasks;
+    }
+
+    /***********
+     * Rendering
+     ***********/
+    function render(){
+      const tasks = getVisibleTasks();
+
+      taskBody.innerHTML = "";
+      for(const t of tasks){
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 cursor-pointer";
+        if(t.taskId === selectedTaskId) tr.classList.add("bg-blue-50");
+
+        // overdue highlight
+        const overdue = t.status !== "Closed" && t.dueDate && (daysFromToday(t.dueDate) < 0);
+        if(overdue) tr.classList.add("bg-red-50");
+
+        tr.innerHTML = `
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="font-semibold">${t.taskId}</div>
+            <div class="text-xs text-slate-500">${fmtDate((t.createdOn||"").slice(0,10))}</div>
+          </td>
+          <td class="px-4 py-3 min-w-[220px]">
+            <div class="font-medium">${escapeHTML(t.clientName)}</div>
+            <div class="text-xs text-slate-500 line-clamp-1">${escapeHTML(t.description)}</div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="font-medium">${escapeHTML(t.assignedTo)}</div>
+            <div class="text-xs text-slate-500">by ${escapeHTML(t.assignor)}</div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="${chipForUrgency(t.urgency)}">${t.urgency}</span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="font-medium">${fmtDate(t.dueDate)}</div>
+            ${overdue ? `<div class="text-xs text-red-700 font-semibold">Overdue</div>` : `<div class="text-xs text-slate-500">${t.startDate?`Start ${fmtDate(t.startDate)}`:""}</div>`}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="${chipForStatus(t.status)}">${t.status}</span>
+          </td>
+        `;
+        tr.addEventListener("click", ()=>selectTask(t.taskId));
+        taskBody.appendChild(tr);
+      }
+
+      renderSummary(tasks);
+      renderDetail();
+    }
+
+    function renderSummary(tasks){
+      const total = tasks.length;
+      const open = tasks.filter(t=>t.status==="Open").length;
+      const closed = tasks.filter(t=>t.status==="Closed").length;
+      const overdue = tasks.filter(t=>t.status!=="Closed" && t.dueDate && daysFromToday(t.dueDate)<0).length;
+
+      $("sumTotal").textContent = total;
+      $("sumOpen").textContent = open;
+      $("sumClosed").textContent = closed;
+      $("sumOverdue").textContent = overdue;
+    }
+
+    function renderLog(){
+      logEl.innerHTML = "";
+      if(uiLog.length === 0){
+        logEl.innerHTML = `<div class="text-sm text-slate-500">No activity yet.</div>`;
+        return;
+      }
+      for(const l of uiLog.slice(0,50)){
+        const div = document.createElement("div");
+        div.className = "rounded-xl border bg-slate-50 p-2";
+        div.innerHTML = `
+          <div class="text-xs text-slate-500">${new Date(l.at).toLocaleString()}</div>
+          <div class="text-sm font-medium">${escapeHTML(l.text)}</div>
+        `;
+        logEl.appendChild(div);
+      }
+    }
+
+    /********************
+     * Task select/detail
+     ********************/
+    function selectTask(taskId){
+      selectedTaskId = taskId;
+      render();
+      const t = state.tasks.find(x=>x.taskId===taskId);
+      if(t) logEvent(`Opened ${t.taskId}`);
+    }
+
+    function renderDetail(){
+      const t = state.tasks.find(x=>x.taskId===selectedTaskId);
+      if(!t){
+        $("noSelection").classList.remove("hidden");
+        $("detail").classList.add("hidden");
+        $("detailBadge").classList.add("hidden");
+        return;
+      }
+
+      $("noSelection").classList.add("hidden");
+      $("detail").classList.remove("hidden");
+
+      $("d_taskId").textContent = t.taskId;
+      $("d_assignor").textContent = t.assignor;
+      $("d_created").textContent = new Date(t.createdOn).toLocaleString();
+      $("d_client").textContent = t.clientName;
+      $("d_desc").textContent = t.description;
+      $("d_assignedTo").textContent = t.assignedTo;
+
+      $("d_urgency").value = t.urgency;
+      $("d_due").value = t.dueDate || "";
+      $("d_status").value = t.status;
+      $("d_actual").value = t.actualDate || "";
+      $("d_rev1").value = t.rev1 || "";
+      $("d_rev2").value = t.rev2 || "";
+      $("d_lastUpdate").textContent = `Updated ${new Date(t.lastUpdated).toLocaleString()}`;
+
+      const badge = $("detailBadge");
+      badge.classList.remove("hidden");
+      badge.textContent = t.status;
+      badge.className = t.status === "Closed" ? "chip chip-closed" : "chip chip-open";
+
+      // delegate dropdown defaults
+      $("d_delegateTo").value = "— Select —";
+    }
+
+    /***********************
+     * Actions: Save/Delegate
+     ***********************/
+    function saveTaskChanges(){
+      const t = state.tasks.find(x=>x.taskId===selectedTaskId);
+      if(!t) return;
+
+      const user = $("userSelect").value;
+
+      const next = {
+        urgency: $("d_urgency").value,
+        dueDate: $("d_due").value,
+        status: $("d_status").value,
+        actualDate: $("d_actual").value,
+        rev1: $("d_rev1").value,
+        rev2: $("d_rev2").value
+      };
+
+      // Closing needs confirmation
+      if(t.status !== "Closed" && next.status === "Closed"){
+        const ok = confirm(`Mark task ${t.taskId} as Closed?`);
+        if(!ok){
+          $("d_status").value = t.status;
+          return;
+        }
+        if(!next.actualDate) next.actualDate = todayISO();
+      }
+
+      // Re-open policy example: only lead can reopen
+      if(t.status === "Closed" && next.status !== "Closed"){
+        const role = $("roleSelect").value;
+        if(role !== "lead"){
+          alert("Only Team Lead can reopen a Closed task.");
+          $("d_status").value = "Closed";
+          return;
+        }
+      }
+
+      // Apply updates
+      const changed = [];
+      for(const k of Object.keys(next)){
+        if((t[k]||"") !== (next[k]||"")){
+          changed.push(`${k}: "${t[k]||""}" → "${next[k]||""}"`);
+          t[k] = next[k] || "";
+        }
+      }
+
+      t.lastUpdated = new Date().toISOString();
+      if(changed.length){
+        t.history.push({at:t.lastUpdated, by:user, action:`Updated • ${changed.join(" | ")}`});
+        logEvent(`${user} updated ${t.taskId}`);
+      }else{
+        logEvent(`No changes for ${t.taskId}`);
+      }
+
+      saveState();
+      render();
+    }
+
+    function delegateTask(){
+      const t = state.tasks.find(x=>x.taskId===selectedTaskId);
+      if(!t) return;
+
+      const to = $("d_delegateTo").value;
+      if(!to || to === "— Select —"){
+        alert("Select a team member to delegate.");
+        return;
+      }
+
+      const ok = confirm(`Assign further to ${to}?`);
+      if(!ok) return;
+
+      const from = $("userSelect").value;
+
+      // keep same Task ID, change assignedTo
+      const prev = t.assignedTo;
+      t.assignedTo = to;
+      t.lastUpdated = new Date().toISOString();
+      t.history.push({at:t.lastUpdated, by:from, action:`Delegated: ${prev} → ${to}`});
+
+      logEvent(`${from} delegated ${t.taskId} to ${to}`);
+      saveState();
+      render();
+    }
+
+    /********************
+     * Create new task
+     ********************/
+    function openModal(){
+      $("modalBackdrop").classList.remove("hidden");
+      $("modal").classList.remove("hidden");
+      // sensible defaults
+      $("m_client").value = "";
+      $("m_desc").value = "";
+      $("m_assignor").value = $("userSelect").value || "Vishal Sharma";
+      $("m_assignTo").value = $("userSelect").value || TEAM[0];
+      $("m_urgency").value = "Medium";
+      $("m_start").value = "";
+      $("m_due").value = "";
+    }
+    function closeModal(){
+      $("modalBackdrop").classList.add("hidden");
+      $("modal").classList.add("hidden");
+    }
+
+    function nextTaskId(){
+      const d = new Date();
+      const key = yymmdd(d);
+      state.counterByDay[key] = (state.counterByDay[key] || 0) + 1;
+      return "ECOO" + key + pad3(state.counterByDay[key]);
+    }
+
+    function createTask(){
+      const clientName = $("m_client").value.trim();
+      const description = $("m_desc").value.trim();
+      const assignor = $("m_assignor").value;
+      const assignedTo = $("m_assignTo").value;
+      const urgency = $("m_urgency").value;
+      const startDate = $("m_start").value;
+      const dueDate = $("m_due").value;
+
+      if(!clientName || !description || !assignedTo || !dueDate){
+        alert("Please fill: Client, Description, Assign To, Due date.");
+        return;
+      }
+
+      const id = nextTaskId();
+      const now = new Date().toISOString();
+
+      const task = {
+        taskId: id,
+        createdOn: now,
+        assignor,
+        clientName,
+        description,
+        assignedTo,
+        urgency,
+        startDate: startDate || "",
+        dueDate,
+        status: "Open",
+        actualDate: "",
+        rev1: "",
+        rev2: "",
+        lastUpdated: now,
+        history: [{at:now, by:assignor, action:"Created task"}]
+      };
+
+      state.tasks.unshift(task);
+      saveState();
+      closeModal();
+      logEvent(`Created ${id} and assigned to ${assignedTo}`);
+      selectedTaskId = id;
+      render();
+    }
+
+    /********************
+     * Export / Reset
+     ********************/
+    function exportJSON(){
+      const dataStr = JSON.stringify(state, null, 2);
+      const blob = new Blob([dataStr], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ecoo_tasks_export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      logEvent("Exported JSON");
+    }
+
+    function resetDemo(){
+      if(!confirm("Reset demo data?")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = loadState();
+      selectedTaskId = null;
+      uiLog = [];
+      initUI();
+      render();
+      logEvent("Reset demo state");
+    }
+
+    /********************
+     * Small utilities
+     ********************/
+    function escapeHTML(str){
+      return (str||"").replace(/[&<>"']/g, (m)=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    /********************
+     * Events wiring
+     ********************/
+    let activeQuick = "all";
+
+    $("btnApply").addEventListener("click", render);
+    $("btnClear").addEventListener("click", ()=>{
+      $("q").value = "";
+      $("statusFilter").value = "";
+      $("urgencyFilter").value = "";
+      $("dueFrom").value = "";
+      $("dueTo").value = "";
+      render();
+    });
+
+    $("sortBy").addEventListener("change", render);
+
+    $("roleSelect").addEventListener("change", ()=>{
+      state.view.role = $("roleSelect").value;
+      saveState();
+      render();
+    });
+    $("userSelect").addEventListener("change", ()=>{
+      state.view.user = $("userSelect").value;
+      saveState();
+      render();
+    });
+
+    $("btnMyTasks").addEventListener("click", ()=>{
+      activeQuick = "my";
+      $("btnMyTasks").className = "px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800";
+      $("btnAllTasks").className = "px-3 py-2 rounded-xl border bg-white text-sm font-semibold hover:bg-slate-50";
+      render();
+    });
+    $("btnAllTasks").addEventListener("click", ()=>{
+      activeQuick = "all";
+      $("btnAllTasks").className = "px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800";
+      $("btnMyTasks").className = "px-3 py-2 rounded-xl border bg-white text-sm font-semibold hover:bg-slate-50";
+      render();
+    });
+
+    $("btnSave").addEventListener("click", saveTaskChanges);
+    $("btnDelegate").addEventListener("click", delegateTask);
+
+    $("btnNewTask").addEventListener("click", openModal);
+    $("btnCloseModal").addEventListener("click", closeModal);
+    $("modalBackdrop").addEventListener("click", closeModal);
+    $("btnCreateTask").addEventListener("click", createTask);
+
+    $("btnExport").addEventListener("click", exportJSON);
+    $("btnReset").addEventListener("click", resetDemo);
+
+    /********************
+     * Boot
+     ********************/
+    initUI();
+    render();
+    renderLog();
+  </script>
+</body>
+</html>
